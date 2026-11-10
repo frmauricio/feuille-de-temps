@@ -87,9 +87,20 @@ dias = [
 ]
 
 for dia in dias:
+    if st.session_state.get(f"reset_requested_{dia}", False):
+        st.session_state[f"lineas_{dia}"] = [{
+            "in": "", "out": "", "abs": "-", 
+            "serv": "Service (WO)", "ord": "", 
+            "loc": "Candiac (Z8)", "comm": ""
+        }]
+        ot_def = 3.00 if "Lundi" in dia else 0.00
+        st.session_state[f"ot_bank_val_{dia}"] = 0.0
+        st.session_state[f"ot_pay_val_{dia}"] = ot_def
+        st.session_state[f"reset_requested_{dia}"] = False
+
     if f"lineas_{dia}" not in st.session_state:
         st.session_state[f"lineas_{dia}"] = [
-            {"in": 7.0, "out": 15.0, "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
+            {"in": "8", "out": "16", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
     
     ot_val_default = 3.00 if "Lundi" in dia else 0.00
@@ -116,9 +127,11 @@ for dia in dias:
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
             with cols[0]:
-                st.number_input("In", value=linea["in"], step=0.5, key=f"in_{dia}_{idx}")
+                # Placeholder con 8 en gris
+                st.text_input("In", value=linea["in"], placeholder="8", key=f"in_{dia}_{idx}")
             with cols[1]:
-                st.number_input("Out", value=linea["out"], step=0.5, key=f"out_{dia}_{idx}")
+                # Placeholder con 16 en gris
+                st.text_input("Out", value=linea["out"], placeholder="16", key=f"out_{dia}_{idx}")
             with cols[2]:
                 st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
             with cols[3]:
@@ -177,12 +190,11 @@ for dia in dias:
         
         with c_add:
             if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
-                ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"]
-                nuevo_out = min(24.0, ultimo_out + 4.0)
+                ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"] or "16"
                 
                 st.session_state[f"lineas_{dia}"].append({
                     "in": ultimo_out, 
-                    "out": nuevo_out, 
+                    "out": "", 
                     "abs": "-", 
                     "serv": "Service (WO)", 
                     "ord": "", 
@@ -196,11 +208,5 @@ for dia in dias:
             
         with c_reset:
             if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
-                st.session_state[f"lineas_{dia}"] = [{
-                    "in": 7.0, "out": 15.0, "abs": "-", 
-                    "serv": "Service (WO)", "ord": "", 
-                    "loc": "Candiac (Z8)", "comm": ""
-                }]
-                st.session_state[f"ot_bank_val_{dia}"] = 0.0
-                st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
+                st.session_state[f"reset_requested_{dia}"] = True
                 st.rerun()
