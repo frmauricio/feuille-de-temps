@@ -35,6 +35,12 @@ div[data-testid="stExpander"] {
     font-weight: bold;
     font-size: 0.85rem;
 }
+.decimal-hint {
+    font-size: 0.75rem;
+    color: #9CA3AF;
+    margin-top: -15px;
+    margin-bottom: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -147,13 +153,16 @@ for dia in dias:
     # 4. Renderizado del Acordeón e Interfaz
     with st.expander(label_acordeon, expanded=esta_abierto):
         
+        # Nota informativa sobre el formato decimal de minutos (1 = 6 min)
+        st.markdown('<p class="decimal-hint">💡 Format décimal (ex: .1 = 6 min, .5 = 30 min | Ex: 8.5 = 8h30)</p>', unsafe_allow_html=True)
+        
         for idx, linea in enumerate(lineas_actuales):
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
             with cols[0]:
-                st.text_input("In", value=linea["in"], placeholder="8", key=f"in_{dia}_{idx}")
+                st.text_input("In", value=linea["in"], placeholder="8 or 8.5", key=f"in_{dia}_{idx}")
             with cols[1]:
-                st.text_input("Out", value=linea["out"], placeholder="16", key=f"out_{dia}_{idx}")
+                st.text_input("Out", value=linea["out"], placeholder="16 or 16.5", key=f"out_{dia}_{idx}")
             with cols[2]:
                 st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
             with cols[3]:
@@ -180,7 +189,7 @@ for dia in dias:
 
         # Alerta de entrada matinal temprana
         if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{dia}", False):
-            st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.1f}h sont-elles du temps régulier ou de l'Overtime ?")
+            st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.2f}h sont-elles du temps régulier ou de l'Overtime ?")
             c_q1, c_q2 = st.columns(2)
             with c_q1:
                 if st.button("🟢 Temps régulier", key=f"reg_{dia}", use_container_width=True):
@@ -217,12 +226,12 @@ for dia in dias:
             col_sel1, col_sel2 = st.columns(2)
             with col_sel1:
                 st.number_input(
-                    "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.1, format="%.1f",
                     key=key_banco, on_change=make_update_pago(dia, ot_disponible)
                 )
             with col_sel2:
                 st.number_input(
-                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.1, format="%.1f",
                     key=key_pago, on_change=make_update_banco(dia, ot_disponible)
                 )
         else:
@@ -256,6 +265,11 @@ for dia in dias:
 
         with c_nuit:
             st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
+            
+        with c_reset:
+            if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
+                st.session_state[f"reset_requested_{dia}"] = True
+                st.rerun()
             
         with c_reset:
             if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
