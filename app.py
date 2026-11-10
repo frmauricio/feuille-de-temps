@@ -69,10 +69,12 @@ with col_btn2:
 st.markdown(f"### Saisie des heures — {emp_code}")
 st.divider()
 
-# --- ESTRUCTURA DE DÍAS Y SEGUIMIENTO DE LÍNEAS EN SESSION STATE ---
-dias = ["Dimanche 8 nov", "Lundi 9 nov", "Mardi 10 nov", "Mercredi 11 nov", "Jeudi 12 nov", "Vendredi 13 nov", "Samedi 14 nov"]
+# --- ESTRUCTURA DE DÍAS Y SEGUIMIENTO DE LÍNEAS ---
+dias = [
+    "Dimanche 8 nov", "Lundi 9 nov", "Mardi 10 nov", 
+    "Mercredi 11 nov", "Jeudi 12 nov", "Vendredi 13 nov", "Samedi 14 nov"
+]
 
-# Inicializar almacenamiento de filas de cada día si no existen
 for dia in dias:
     if f"lineas_{dia}" not in st.session_state:
         st.session_state[f"lineas_{dia}"] = [
@@ -170,11 +172,7 @@ for dia in dias:
         c_add, c_del, c_nuit, c_reset = st.columns([2.5, 2.5, 3, 2])
         
         with c_add:
-            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
+            btn_add_key = f"add_btn_{dia}"
+            if st.button("➕ Ajouter", key=btn_add_key, use_container_width=True):
                 st.session_state[f"lineas_{dia}"].append(
-                    {"in": 8.0, "out": 17.0, "abs": "-", "serv": "Service (WO)", "ord": "", "loc": "Candiac (Z8)", "comm": ""}
-                )
-                st.rerun()
-
-        with c_del:
-            if st.button("🗑️ Supprimer cette ligne", key=f
+                    {"in": 8.0, "out":
