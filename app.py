@@ -172,7 +172,32 @@ for dia in dias:
         c_add, c_del, c_nuit, c_reset = st.columns([2.5, 2.5, 3, 2])
         
         with c_add:
-            btn_add_key = f"add_btn_{dia}"
-            if st.button("➕ Ajouter", key=btn_add_key, use_container_width=True):
-                st.session_state[f"lineas_{dia}"].append(
-                    {"in": 8.0, "out":
+            if st.button("➕ Ajouter", key=f"add_btn_{dia}", use_container_width=True):
+                st.session_state[f"lineas_{dia}"].append({
+                    "in": 8.0, "out": 17.0, "abs": "-", 
+                    "serv": "Service (WO)", "ord": "", 
+                    "loc": "Candiac (Z8)", "comm": ""
+                })
+                st.rerun()
+
+        with c_del:
+            if st.button("🗑️ Supprimer", key=f"del_btn_{dia}", use_container_width=True):
+                if len(st.session_state[f"lineas_{dia}"]) > 1:
+                    st.session_state[f"lineas_{dia}"].pop()
+                    st.rerun()
+                else:
+                    st.warning("Debe haber al menos una línea.")
+
+        with c_nuit:
+            st.button("🌙 Nuit", key=f"nuit_{dia}", use_container_width=True)
+            
+        with c_reset:
+            if st.button("Reset", key=f"reset_btn_{dia}", use_container_width=True):
+                st.session_state[f"lineas_{dia}"] = [{
+                    "in": 8.0, "out": 17.0, "abs": "-", 
+                    "serv": "Service (WO)", "ord": "", 
+                    "loc": "Candiac (Z8)", "comm": ""
+                }]
+                st.session_state[f"ot_bank_val_{dia}"] = 0.0
+                st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
+                st.rerun()
