@@ -116,7 +116,6 @@ for dia in dias:
     
     lineas_actuales = st.session_state[f"lineas_{dia}"]
     
-    # Comprobar si la primera línea inicia antes de las 8:00 (ej. a las 6:00)
     prime_in = st.session_state.get(f"in_{dia}_0", lineas_actuales[0]["in"])
     is_early_shift = False
     early_hours = 0.0
@@ -128,7 +127,7 @@ for dia in dias:
     except ValueError:
         pass
 
-    # Calcular horas totales del día
+    # Calcular horas totales brutas del día
     total_horas_dia = 0.0
     for idx, linea in enumerate(lineas_actuales):
         in_val = st.session_state.get(f"in_{dia}_{idx}", linea["in"])
@@ -141,8 +140,9 @@ for dia in dias:
         except ValueError:
             pass
 
-    rt_disponible = min(total_horas_dia, 7.5)
-    ot_disponible = max(0.0, total_horas_dia - 7.5)
+    # Límite regular ajustado a 8.0 horas exactas (sin pausas)
+    rt_disponible = min(total_horas_dia, 8.0)
+    ot_disponible = max(0.0, total_horas_dia - 8.0)
 
     num_lineas = len(lineas_actuales)
     label_acordeon = f"{dia}  •  {total_horas_dia:.2f}h Total ({num_lineas} lignes)"
@@ -180,7 +180,7 @@ for dia in dias:
                     else:
                         st.warning("Min 1")
 
-        # Pregunta interactiva si entra temprano (ej. a las 6:00) y aún no se ha confirmado
+        # Pregunta interactiva si entra temprano (ej. a las 6:00)
         if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{dia}", False):
             st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.1f}h sont-elles du temps régulier ou de l'Overtime ?")
             c_q1, c_q2 = st.columns(2)
@@ -194,7 +194,7 @@ for dia in dias:
                     st.session_state[f"early_ot_confirmed_{dia}"] = True
                     st.rerun()
 
-        # Sección de Overtime general si se superan las horas normales
+        # Sección de Overtime general si se superan las 8 horas normales
         if ot_disponible > 0:
             st.markdown(
                 f"**À confirmer →** <span class='ot-badge'>OT {ot_disponible:.2f}h</span> + <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
