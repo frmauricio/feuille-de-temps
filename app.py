@@ -80,13 +80,14 @@ with col_btn2:
 st.markdown(f"### Saisie des heures — {emp_code}")
 st.divider()
 
-# --- ESTRUCTURA DE DÍAS Y SEGUIMIENTO DE LÍNEAS ---
+# --- ESTRUCTURA DE DÍAS Y RENDERIZADO UNIFICADO ---
 dias = [
     "Dimanche 8 nov", "Lundi 9 nov", "Mardi 10 nov", 
     "Mercredi 11 nov", "Jeudi 12 nov", "Vendredi 13 nov", "Samedi 14 nov"
 ]
 
 for dia in dias:
+    # 1. Procesar solicitud de reinicio ANTES de instanciar widgets
     if st.session_state.get(f"reset_requested_{dia}", False):
         st.session_state[f"lineas_{dia}"] = [{
             "in": "", "out": "", "abs": "-", 
@@ -98,11 +99,11 @@ for dia in dias:
         st.session_state[f"early_ot_confirmed_{dia}"] = False
         st.session_state[f"reset_requested_{dia}"] = False
 
+    # 2. Inicializar estado si no existe
     if f"lineas_{dia}" not in st.session_state:
         st.session_state[f"lineas_{dia}"] = [
             {"in": "", "out": "", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
-    
     if f"ot_bank_val_{dia}" not in st.session_state:
         st.session_state[f"ot_bank_val_{dia}"] = 0.0
     if f"ot_pay_val_{dia}" not in st.session_state:
@@ -110,10 +111,8 @@ for dia in dias:
     if f"early_ot_confirmed_{dia}" not in st.session_state:
         st.session_state[f"early_ot_confirmed_{dia}"] = False
 
-# --- RENDERIZADO DE ACORDEONES POR DÍA ---
-for dia in dias:
+    # 3. Cálculos del día
     esta_abierto = True if "Lundi" in dia else False
-    
     lineas_actuales = st.session_state[f"lineas_{dia}"]
     
     prime_in = st.session_state.get(f"in_{dia}_0", lineas_actuales[0]["in"])
@@ -127,7 +126,6 @@ for dia in dias:
     except ValueError:
         pass
 
-    # Calcular horas totales brutas del día
     total_horas_dia = 0.0
     for idx, linea in enumerate(lineas_actuales):
         in_val = st.session_state.get(f"in_{dia}_{idx}", linea["in"])
@@ -140,13 +138,13 @@ for dia in dias:
         except ValueError:
             pass
 
-    # Límite regular de 8.0 horas exactas (sin pausas de almuerzo)
     rt_disponible = min(total_horas_dia, 8.0)
     ot_disponible = max(0.0, total_horas_dia - 8.0)
 
     num_lineas = len(lineas_actuales)
     label_acordeon = f"{dia}  •  {total_horas_dia:.2f}h Total ({num_lineas} lignes)"
 
+    # 4. Renderizado del Acordeón e Interfaz
     with st.expander(label_acordeon, expanded=esta_abierto):
         
         for idx, linea in enumerate(lineas_actuales):
@@ -180,7 +178,7 @@ for dia in dias:
                     else:
                         st.warning("Min 1")
 
-        # Pregunta interactiva si entra temprano (ej. a las 6:00)
+        # Alerta de entrada matinal temprana
         if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{dia}", False):
             st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.1f}h sont-elles du temps régulier ou de l'Overtime ?")
             c_q1, c_q2 = st.columns(2)
@@ -212,7 +210,6 @@ for dia in dias:
             key_banco = f"ot_bank_val_{dia}"
             key_pago = f"ot_pay_val_{dia}"
 
-            # Asegurar valores iniciales válidos si es la primera vez que aparece el OT
             if st.session_state.get(key_banco, 0.0) + st.session_state.get(key_pago, 0.0) != ot_disponible:
                 st.session_state[key_pago] = ot_disponible
                 st.session_state[key_banco] = 0.0
@@ -259,11 +256,6 @@ for dia in dias:
 
         with c_nuit:
             st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
-            
-        with c_reset:
-            if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
-                st.session_state[f"reset_requested_{dia}"] = True
-                st.rerun()
             
         with c_reset:
             if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
