@@ -86,9 +86,8 @@ for dia in dias:
     ot_disponible = 3.00 if "Lundi" in dia else 0.00
     rt_disponible = 7.50 if "Lundi" in dia else 0.00
 
-    label_acordeon = dia
-    if ot_disponible > 0:
-        label_acordeon += f"  🟡 {ot_disponible + rt_disponible:.2f}h OT"
+    num_lineas = len(st.session_state[f"lineas_{dia}"])
+    label_acordeon = f"{dia}  •  {rt_disponible + ot_disponible:.2f}h RT ({num_lineas} lignes)"
 
     with st.expander(label_acordeon, expanded=esta_abierto):
         
@@ -123,69 +122,4 @@ for dia in dias:
             
             if key_banco not in st.session_state:
                 st.session_state[key_banco] = 0.0
-            if key_pago not in st.session_state:
-                st.session_state[key_pago] = ot_disponible
-
-            def actualizar_pago(d=dia, total=ot_disponible):
-                st.session_state[f"ot_pay_val_{d}"] = max(0.0, total - st.session_state[f"ot_bank_val_{d}"])
-
-            def actualizar_banco(d=dia, total=ot_disponible):
-                st.session_state[f"ot_bank_val_{d}"] = max(0.0, total - st.session_state[f"ot_pay_val_{d}"])
-
-            # Cuadro de alerta con f-string seguro en una sola línea para evitar errores de sintaxis
-            aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible}h hors 08–17h)"
-            st.markdown(f"""
-                <div style="background-color: #1F2937; border: 1px solid #374151; padding: 12px; border-radius: 8px; color: #F3F4F6; margin-top: 10px; margin-bottom: 10px;">
-                    <strong>{aviso_ot}</strong><br>
-                    Le client a-t-il demandé de travailler en dehors des heures normales?<br>
-                    <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible}h max) :</small>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            col_sel1, col_sel2 = st.columns(2)
-            with col_sel1:
-                st.number_input(
-                    "🏛️ Heures OT en banque", 
-                    min_value=0.0, 
-                    max_value=ot_disponible, 
-                    step=0.5, 
-                    key=key_banco,
-                    on_change=actualizar_pago
-                )
-            with col_sel2:
-                st.number_input(
-                    "💰 Heures OT à payer", 
-                    min_value=0.0, 
-                    max_value=ot_disponible, 
-                    step=0.5, 
-                    key=key_pago,
-                    on_change=actualizar_banco
-                )
-        else:
-            st.markdown(
-                f"**À confirmer →** <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
-                unsafe_allow_html=True
-            )
-
-        # Botones de Acción Diarios
-        st.write("")
-        c_add, c_nuit, c_reset = st.columns([2, 3, 2])
-        
-        with c_add:
-            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
-                st.session_state[f"lineas_{dia}"].append(
-                    {"in": 8.0, "out": 17.0, "abs": "-", "serv": "Service (WO)", "ord": "", "loc": "Candiac (Z8)", "comm": ""}
-                )
-                st.rerun()
-
-        with c_nuit:
-            st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
-            
-        with c_reset:
-            if st.button("🗑️ Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
-                st.session_state[f"lineas_{dia}"] = [
-                    {"in": 8.0, "out": 17.0, "abs": "-", "serv": "Service (WO)", "ord": "", "loc": "Candiac (Z8)", "comm": ""}
-                ]
-                st.session_state[f"ot_bank_val_{dia}"] = 0.0
-                st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
-                st.rerun()
+            if key_p
