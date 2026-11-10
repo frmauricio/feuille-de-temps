@@ -45,14 +45,14 @@ div[data-testid="stExpander"] {
 """, unsafe_allow_html=True)
 
 # 2. Funciones de actualización para la distribución del Overtime
-def make_update_pago(d, total):
+def make_update_pago(i, total):
     def callback():
-        st.session_state[f"ot_pay_val_{d}"] = max(0.0, total - st.session_state[f"ot_bank_val_{d}"])
+        st.session_state[f"ot_pay_val_{i}"] = max(0.0, total - st.session_state[f"ot_bank_val_{i}"])
     return callback
 
-def make_update_banco(d, total):
+def make_update_banco(i, total):
     def callback():
-        st.session_state[f"ot_bank_val_{d}"] = max(0.0, total - st.session_state[f"ot_pay_val_{d}"])
+        st.session_state[f"ot_bank_val_{i}"] = max(0.0, total - st.session_state[f"ot_pay_val_{i}"])
     return callback
 
 # 3. Captura del usuario desde la URL
@@ -92,36 +92,36 @@ dias = [
     "Mercredi 11 nov", "Jeudi 12 nov", "Vendredi 13 nov", "Samedi 14 nov"
 ]
 
-for dia in dias:
+for i, dia in enumerate(dias):
     # 1. Procesar solicitud de reinicio ANTES de instanciar widgets
-    if st.session_state.get(f"reset_requested_{dia}", False):
-        st.session_state[f"lineas_{dia}"] = [{
+    if st.session_state.get(f"reset_requested_{i}", False):
+        st.session_state[f"lineas_{i}"] = [{
             "in": "", "out": "", "abs": "-", 
             "serv": "Service (WO)", "ord": "", 
             "loc": "Candiac (Z8)", "comm": ""
         }]
-        st.session_state[f"ot_bank_val_{dia}"] = 0.0
-        st.session_state[f"ot_pay_val_{dia}"] = 0.0
-        st.session_state[f"early_ot_confirmed_{dia}"] = False
-        st.session_state[f"reset_requested_{dia}"] = False
+        st.session_state[f"ot_bank_val_{i}"] = 0.0
+        st.session_state[f"ot_pay_val_{i}"] = 0.0
+        st.session_state[f"early_ot_confirmed_{i}"] = False
+        st.session_state[f"reset_requested_{i}"] = False
 
     # 2. Inicializar estado si no existe
-    if f"lineas_{dia}" not in st.session_state:
-        st.session_state[f"lineas_{dia}"] = [
+    if f"lineas_{i}" not in st.session_state:
+        st.session_state[f"lineas_{i}"] = [
             {"in": "", "out": "", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
-    if f"ot_bank_val_{dia}" not in st.session_state:
-        st.session_state[f"ot_bank_val_{dia}"] = 0.0
-    if f"ot_pay_val_{dia}" not in st.session_state:
-        st.session_state[f"ot_pay_val_{dia}"] = 0.0
-    if f"early_ot_confirmed_{dia}" not in st.session_state:
-        st.session_state[f"early_ot_confirmed_{dia}"] = False
+    if f"ot_bank_val_{i}" not in st.session_state:
+        st.session_state[f"ot_bank_val_{i}"] = 0.0
+    if f"ot_pay_val_{i}" not in st.session_state:
+        st.session_state[f"ot_pay_val_{i}"] = 0.0
+    if f"early_ot_confirmed_{i}" not in st.session_state:
+        st.session_state[f"early_ot_confirmed_{i}"] = False
 
     # 3. Cálculos del día
     esta_abierto = True if "Lundi" in dia else False
-    lineas_actuales = st.session_state[f"lineas_{dia}"]
+    lineas_actuales = st.session_state[f"lineas_{i}"]
     
-    prime_in = st.session_state.get(f"in_{dia}_0", lineas_actuales[0]["in"])
+    prime_in = st.session_state.get(f"in_{i}_0", lineas_actuales[0]["in"])
     is_early_shift = False
     early_hours = 0.0
     try:
@@ -134,8 +134,8 @@ for dia in dias:
 
     total_horas_dia = 0.0
     for idx, linea in enumerate(lineas_actuales):
-        in_val = st.session_state.get(f"in_{dia}_{idx}", linea["in"])
-        out_val = st.session_state.get(f"out_{dia}_{idx}", linea["out"])
+        in_val = st.session_state.get(f"in_{i}_{idx}", linea["in"])
+        out_val = st.session_state.get(f"out_{i}_{idx}", linea["out"])
         try:
             h_in = float(in_val) if in_val != "" else 0.0
             h_out = float(out_val) if out_val != "" else 0.0
@@ -153,52 +153,51 @@ for dia in dias:
     # 4. Renderizado del Acordeón e Interfaz
     with st.expander(label_acordeon, expanded=esta_abierto):
         
-        # Nota informativa sobre el formato decimal de minutos (1 = 6 min)
         st.markdown('<p class="decimal-hint">💡 Format décimal (ex: .1 = 6 min, .5 = 30 min | Ex: 8.5 = 8h30)</p>', unsafe_allow_html=True)
         
         for idx, linea in enumerate(lineas_actuales):
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
             with cols[0]:
-                st.text_input("In", value=linea["in"], placeholder="8 or 8.5", key=f"in_{dia}_{idx}")
+                st.text_input("In", value=linea["in"], placeholder="8 or 8.5", key=f"in_{i}_{idx}")
             with cols[1]:
-                st.text_input("Out", value=linea["out"], placeholder="16 or 16.5", key=f"out_{dia}_{idx}")
+                st.text_input("Out", value=linea["out"], placeholder="16 or 16.5", key=f"out_{i}_{idx}")
             with cols[2]:
-                st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
+                st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{i}_{idx}")
             with cols[3]:
-                st.selectbox("Service", ["Service (WO)", "Interne (WO)", "PM"], index=0, key=f"serv_{dia}_{idx}")
+                st.selectbox("Service", ["Service (WO)", "Interne (WO)", "PM"], index=0, key=f"serv_{i}_{idx}")
             with cols[4]:
-                st.text_input("Order Ref", value=linea["ord"], key=f"ord_{dia}_{idx}")
+                st.text_input("Order Ref", value=linea["ord"], key=f"ord_{i}_{idx}")
             with cols[5]:
-                st.selectbox("Loc", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], index=0, key=f"loc_{dia}_{idx}")
+                st.selectbox("Loc", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], index=0, key=f"loc_{i}_{idx}")
             with cols[6]:
-                st.text_input("Comm", value=linea["comm"], placeholder="Opt", key=f"com_{dia}_{idx}")
+                st.text_input("Comm", value=linea["comm"], placeholder="Opt", key=f"com_{i}_{idx}")
             with cols[7]:
                 st.markdown("<br>", unsafe_allow_html=True)
-                btn_del_key = f"del_line_{dia}_{idx}"
+                btn_del_key = f"del_line_{i}_{idx}"
                 if st.button("🗑️", key=btn_del_key, help="Supprimer cette ligne"):
-                    for i in range(len(st.session_state[f"lineas_{dia}"])):
-                        st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
-                        st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
+                    for k in range(len(st.session_state[f"lineas_{i}"])):
+                        st.session_state[f"lineas_{i}"][k]["in"] = st.session_state.get(f"in_{i}_{k}", st.session_state[f"lineas_{i}"][k]["in"])
+                        st.session_state[f"lineas_{i}"][k]["out"] = st.session_state.get(f"out_{i}_{k}", st.session_state[f"lineas_{i}"][k]["out"])
                     
-                    if len(st.session_state[f"lineas_{dia}"]) > 1:
-                        st.session_state[f"lineas_{dia}"].pop(idx)
+                    if len(st.session_state[f"lineas_{i}"]) > 1:
+                        st.session_state[f"lineas_{i}"].pop(idx)
                         st.rerun()
                     else:
                         st.warning("Min 1")
 
         # Alerta de entrada matinal temprana
-        if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{dia}", False):
+        if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{i}", False):
             st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.2f}h sont-elles du temps régulier ou de l'Overtime ?")
             c_q1, c_q2 = st.columns(2)
             with c_q1:
-                if st.button("🟢 Temps régulier", key=f"reg_{dia}", use_container_width=True):
-                    st.session_state[f"early_ot_confirmed_{dia}"] = True
+                if st.button("🟢 Temps régulier", key=f"reg_{i}", use_container_width=True):
+                    st.session_state[f"early_ot_confirmed_{i}"] = True
                     st.rerun()
             with c_q2:
-                if st.button("🟠 C'est de l'Overtime (OT)", key=f"ot_early_{dia}", use_container_width=True):
-                    st.session_state[f"ot_bank_val_{dia}"] = early_hours
-                    st.session_state[f"early_ot_confirmed_{dia}"] = True
+                if st.button("🟠 C'est de l'Overtime (OT)", key=f"ot_early_{i}", use_container_width=True):
+                    st.session_state[f"ot_bank_val_{i}"] = early_hours
+                    st.session_state[f"early_ot_confirmed_{i}"] = True
                     st.rerun()
 
         # Sección de Overtime general con selectores numéricos para dividir horas
@@ -216,8 +215,8 @@ for dia in dias:
 </div>
 """, unsafe_allow_html=True)
             
-            key_banco = f"ot_bank_val_{dia}"
-            key_pago = f"ot_pay_val_{dia}"
+            key_banco = f"ot_bank_val_{i}"
+            key_pago = f"ot_pay_val_{i}"
 
             if st.session_state.get(key_banco, 0.0) + st.session_state.get(key_pago, 0.0) != ot_disponible:
                 st.session_state[key_pago] = ot_disponible
@@ -227,12 +226,12 @@ for dia in dias:
             with col_sel1:
                 st.number_input(
                     "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.1, format="%.1f",
-                    key=key_banco, on_change=make_update_pago(dia, ot_disponible)
+                    key=key_banco, on_change=make_update_pago(i, ot_disponible)
                 )
             with col_sel2:
                 st.number_input(
                     "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.1, format="%.1f",
-                    key=key_pago, on_change=make_update_banco(dia, ot_disponible)
+                    key=key_pago, on_change=make_update_banco(i, ot_disponible)
                 )
         else:
             st.markdown(
@@ -245,14 +244,14 @@ for dia in dias:
         c_add, c_nuit, c_reset = st.columns([3, 3, 2])
         
         with c_add:
-            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
-                for i in range(len(st.session_state[f"lineas_{dia}"])):
-                    st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
-                    st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
+            if st.button("➕ Ajouter une ligne", key=f"add_btn_{i}", use_container_width=True):
+                for k in range(len(st.session_state[f"lineas_{i}"])):
+                    st.session_state[f"lineas_{i}"][k]["in"] = st.session_state.get(f"in_{i}_{k}", st.session_state[f"lineas_{i}"][k]["in"])
+                    st.session_state[f"lineas_{i}"][k]["out"] = st.session_state.get(f"out_{i}_{k}", st.session_state[f"lineas_{i}"][k]["out"])
                 
-                ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"] or "16"
+                ultimo_out = st.session_state[f"lineas_{i}"][-1]["out"] or "16"
                 
-                st.session_state[f"lineas_{dia}"].append({
+                st.session_state[f"lineas_{i}"].append({
                     "in": ultimo_out, 
                     "out": "", 
                     "abs": "-", 
@@ -264,11 +263,11 @@ for dia in dias:
                 st.rerun()
 
         with c_nuit:
-            st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
+            st.button("🌙 Nuit à l'extérieur", key=f"nuit_{i}", use_container_width=True)
             
         with c_reset:
-            if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
-                st.session_state[f"reset_requested_{dia}"] = True
+            if st.button("Réinitialiser", key=f"reset_btn_{i}", use_container_width=True):
+                st.session_state[f"reset_requested_{i}"] = True
                 st.rerun()
             
         with c_reset:
