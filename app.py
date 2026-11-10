@@ -165,9 +165,16 @@ for dia in dias:
                 unsafe_allow_html=True
             )
 
-        # Botones de Acción Diarios (Agregar, Borrar, Nuit, Réinitialiser)
+        # Botones de Acción Diarios
         st.write("")
         c_add, c_del, c_nuit, c_reset = st.columns([2.5, 2.5, 3, 2])
         
         with c_add:
-            if st.button("➕ Ajouter une
+            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
+                st.session_state[f"lineas_{dia}"].append(
+                    {"in": 8.0, "out": 17.0, "abs": "-", "serv": "Service (WO)", "ord": "", "loc": "Candiac (Z8)", "comm": ""}
+                )
+                st.rerun()
+
+        with c_del:
+            if st.button("🗑️ Supprimer cette ligne", key=f
