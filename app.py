@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 # 1. Configuración de la página en modo oscuro / ancho
 st.set_page_config(
@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS para imitar la estética oscura y refinada de la captura
+# Estilos CSS para imitar la estética oscura y refinada de la interfaz
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #FFFFFF; }
@@ -38,7 +38,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Captura de parámetros URL (para detectar automáticamente al técnico)
+# 2. Captura de parámetros URL (para detectar automáticamente al técnico, ej: Fredy Diaz)
 query_params = st.query_params
 emp_code = query_params.get("emp", "Fredy Diaz")
 
@@ -80,52 +80,79 @@ dias_semana = [
     ("Samedi 14 nov", False, 0.0, 0.0)
 ]
 
-# Inicializar sesión para guardar líneas de tiempo si no existen
-if "filas_lunes" not in st.session_state:
-    st.session_state.filas_lunes = [
-        {"in": 6.0, "out": 15.5, "absence": "-", "service": "Service (WO)", "order": "345924", "loc": "Candiac (Z8)", "comm": ""}
-    ]
-
 for nombre_dia, esta_abierto, rt_val, ot_val in dias_semana:
     
-    # Título dinámico del acordeón con badges de OT (Overtime) si existen
+    # Título dinámico del acordeón con badges de OT si existen
     label_acordeon = nombre_dia
     if ot_val > 0:
         label_acordeon += f"  🟡 {ot_val + rt_val:.2f}h OT"
 
     with st.expander(label_acordeon, expanded=esta_abierto):
         
-        # Renderizar cada fila de entrada de tiempo dentro del día
-        for idx, fila in enumerate(st.session_state.filas_lunes if "Lundi" in nombre_dia else [1]):
-            c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 1, 1.5, 2, 2, 2, 2])
-            
-            with c1:
-                st.number_input("⏰ In", value=6.0, step=0.5, key=f"in_{nombre_dia}_{idx}")
-            with c2:
-                st.number_input("⏰ Out", value=15.5, step=0.5, key=f"out_{nombre_dia}_{idx}")
-            with c3:
-                st.selectbox("Absence", ["-", "Maladie", "Vacances"], key=f"abs_{nombre_dia}_{idx}")
-            with c4:
-                st.selectbox("Service", ["Service (WO)", "Interne (WO)", "PM"], key=f"serv_{nombre_dia}_{idx}")
-            with c5:
-                st.text_input("Order Ref", value="Ex: 345924", key=f"ord_{nombre_dia}_{idx}")
-            with c6:
-                st.selectbox("Localisation", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], key=f"loc_{nombre_dia}_{idx}")
-            with c7:
-                st.text_input("Commentaire", placeholder="Optionnel", key=f"com_{nombre_dia}_{idx}")
+        # Fila de registro de horas
+        c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 1, 1.5, 2, 2, 2, 2])
+        
+        with c1:
+            st.number_input("⏰ In", value=6.0, step=0.5, key=f"in_{nombre_dia}")
+        with c2:
+            st.number_input("⏰ Out", value=15.5, step=0.5, key=f"out_{nombre_dia}")
+        with c3:
+            st.selectbox("Absence", ["-", "Maladie", "Vacances"], key=f"abs_{nombre_dia}")
+        with c4:
+            st.selectbox("Service", ["Service (WO)", "Interne (WO)", "PM"], key=f"serv_{nombre_dia}")
+        with c5:
+            st.text_input("Order Ref", value="Ex: 345924", key=f"ord_{nombre_dia}")
+        with c6:
+            st.selectbox("Localisation", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], key=f"loc_{nombre_dia}")
+        with c7:
+            st.text_input("Commentaire", placeholder="Optionnel", key=f"com_{nombre_dia}")
 
-        # Cálculo dinámico en el footer del día
-        if "Lundi" in nombre_dia:
+        # Resumen de horas del día
+        if ot_val > 0:
             st.markdown(
-                f"**À confirmer →** <span class='ot-badge'>OT 2.00h</span> + <span class='rt-badge'>RT 7.50h</span>", 
+                f"**À confirmer →** <span class='ot-badge'>OT {ot_val:.2f}h</span> + <span class='rt-badge'>RT {rt_val:.2f}h</span>", 
                 unsafe_allow_html=True
             )
             
-            st.write("")
-            c_add, c_nuit, c_reset = st.columns([2, 3, 2])
-            with c_add:
-                st.button("➕ Ajouter une ligne", key=f"add_{nombre_dia}", use_container_width=True)
-            with c_nuit:
-                st.button("🌙 Nuit à l'extérieur", key=f"nuit_{nombre_dia}", use_container_width=True)
-            with c_reset:
-                st.button("🗑️ Réinitialiser", key=f"reset_{nombre_dia}", use_container_width=True)
+            # Bloque interactivo para repartir las horas de Overtime con selectores numéricos
+            st.markdown(f"""
+                <div style="background-color: #1F2937; border: 1px solid #374151; padding: 12px; border-radius: 8px; color: #F3F4F6; margin-top: 10px; margin-bottom: 10px;">
+                    <strong>⚠️ Shift hors heures standard ({ot_val}h hors 08–17h)</strong><br>
+                    Le client a-t-il demandé de travailler en dehors des heures normales?<br>
+                    <small>👉 Répartition des heures d'Overtime :</small>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                st.number_input(
+                    "💰 Heures OT à payer", 
+                    min_value=0.0, 
+                    max_value=ot_val, 
+                    value=ot_val, 
+                    step=0.5, 
+                    key=f"ot_pay_hrs_{nombre_dia}"
+                )
+            with col_sel2:
+                st.number_input(
+                    "🏛️ Heures OT en banque", 
+                    min_value=0.0, 
+                    max_value=ot_val, 
+                    value=0.0, 
+                    step=0.5, 
+                    key=f"ot_bank_hrs_{nombre_dia}"
+                )
+        else:
+            st.markdown(
+                f"**À confirmer →** <span class='rt-badge'>RT {rt_val:.2f}h</span>", 
+                unsafe_allow_html=True
+            )
+
+        st.write("")
+        c_add, c_nuit, c_reset = st.columns([2, 3, 2])
+        with c_add:
+            st.button("➕ Ajouter une ligne", key=f"add_{nombre_dia}", use_container_width=True)
+        with c_nuit:
+            st.button("🌙 Nuit à l'extérieur", key=f"nuit_{nombre_dia}", use_container_width=True)
+        with c_reset:
+            st.button("🗑️ Réinitialiser", key=f"reset_{nombre_dia}", use_container_width=True)
