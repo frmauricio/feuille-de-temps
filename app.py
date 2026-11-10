@@ -99,7 +99,6 @@ for dia in dias:
         st.session_state[f"reset_requested_{dia}"] = False
 
     if f"lineas_{dia}" not in st.session_state:
-        # Valores iniciales vacíos para que el placeholder en gris actúe de guía
         st.session_state[f"lineas_{dia}"] = [
             {"in": "", "out": "", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
@@ -128,10 +127,8 @@ for dia in dias:
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
             with cols[0]:
-                # El campo empieza vacío y muestra '8' en gris tenue
                 st.text_input("In", value=linea["in"], placeholder="8", key=f"in_{dia}_{idx}")
             with cols[1]:
-                # El campo empieza vacío y muestra '16' en gris tenue
                 st.text_input("Out", value=linea["out"], placeholder="16", key=f"out_{dia}_{idx}")
             with cols[2]:
                 st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
@@ -147,6 +144,11 @@ for dia in dias:
                 st.markdown("<br>", unsafe_allow_html=True)
                 btn_del_key = f"del_line_{dia}_{idx}"
                 if st.button("🗑️", key=btn_del_key, help="Supprimer cette ligne"):
+                    # Sincronizar antes de borrar para mantener índices limpios
+                    for i in range(len(st.session_state[f"lineas_{dia}"])):
+                        st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
+                        st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
+                    
                     if len(st.session_state[f"lineas_{dia}"]) > 1:
                         st.session_state[f"lineas_{dia}"].pop(idx)
                         st.rerun()
@@ -191,6 +193,12 @@ for dia in dias:
         
         with c_add:
             if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
+                # Sincronizar todos los inputs activos de la pantalla a la lista antes de leer el último 'out'
+                for i in range(len(st.session_state[f"lineas_{dia}"])):
+                    st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
+                    st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
+                
+                # Ahora sí leemos el valor real que escribió el usuario en el último 'out' (o por defecto "16")
                 ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"] or "16"
                 
                 st.session_state[f"lineas_{dia}"].append({
