@@ -78,7 +78,7 @@ dias = [
 for dia in dias:
     if f"lineas_{dia}" not in st.session_state:
         st.session_state[f"lineas_{dia}"] = [
-            {"in": 6.0, "out": 15.5, "abs": "-", "serv": "Service (WO)", "ord": "345924", "loc": "Candiac (Z8)", "comm": ""}
+            {"in": 7.0, "out": 15.0, "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
 
 # --- RENDERIZADO DE ACORDEONES POR DÍA ---
@@ -94,23 +94,33 @@ for dia in dias:
     with st.expander(label_acordeon, expanded=esta_abierto):
         
         lineas_actuales = st.session_state[f"lineas_{dia}"]
+        
+        # Renderizar cada línea de entrada y su botón de borrado individual
         for idx, linea in enumerate(lineas_actuales):
-            c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 1, 1.5, 2, 2, 2, 2])
+            cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
-            with c1:
-                st.number_input("⏰ In", value=linea["in"], step=0.5, key=f"in_{dia}_{idx}")
-            with c2:
-                st.number_input("⏰ Out", value=linea["out"], step=0.5, key=f"out_{dia}_{idx}")
-            with c3:
-                st.selectbox("Absence", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
-            with c4:
+            with cols[0]:
+                st.number_input("In", value=linea["in"], step=0.5, key=f"in_{dia}_{idx}")
+            with cols[1]:
+                st.number_input("Out", value=linea["out"], step=0.5, key=f"out_{dia}_{idx}")
+            with cols[2]:
+                st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
+            with cols[3]:
                 st.selectbox("Service", ["Service (WO)", "Interne (WO)", "PM"], index=0, key=f"serv_{dia}_{idx}")
-            with c5:
+            with cols[4]:
                 st.text_input("Order Ref", value=linea["ord"], key=f"ord_{dia}_{idx}")
-            with c6:
-                st.selectbox("Localisation", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], index=0, key=f"loc_{dia}_{idx}")
-            with c7:
-                st.text_input("Commentaire", value=linea["comm"], placeholder="Optionnel", key=f"com_{dia}_{idx}")
+            with cols[5]:
+                st.selectbox("Loc", ["Candiac (Z8)", "Mirabel", "Saint-Jérôme", "Autre"], index=0, key=f"loc_{dia}_{idx}")
+            with cols[6]:
+                st.text_input("Comm", value=linea["comm"], placeholder="Opt", key=f"com_{dia}_{idx}")
+            with cols[7]:
+                st.markdown("<br>", unsafe_allow_html=True) # Espaciado vertical para alinear con los inputs
+                if st.button("🗑️", key=f"del_line_{dia}_{idx}", help="Supprimer cette ligne"):
+                    if len(st.session_state[f"lineas_{dia}"]) > 1:
+                        st.session_state[f"lineas_{dia}"].pop(idx)
+                        st.rerun()
+                    else:
+                        st.warning("Min 1")
 
         # Resumen y Gestión Dinámica de Overtime
         if ot_disponible > 0:
@@ -135,9 +145,8 @@ for dia in dias:
 
             aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible}h hors 08–17h)"
             st.markdown(f"""
-                <div style="background-color: #1F2937; border: 1px solid #374151; padding: 12px; border-radius: 8px; color: #F3F4F6; margin-top: 10px; margin-bottom: 10px;">
+                <div style="background-color: #1F2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: #F3F4F6; margin-top: 8px; margin-bottom: 8px;">
                     <strong>{aviso_ot}</strong><br>
-                    Le client a-t-il demandé de travailler en dehors des heures normales?<br>
                     <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible}h max) :</small>
                 </div>
             """, unsafe_allow_html=True)
@@ -145,21 +154,13 @@ for dia in dias:
             col_sel1, col_sel2 = st.columns(2)
             with col_sel1:
                 st.number_input(
-                    "🏛️ Heures OT en banque", 
-                    min_value=0.0, 
-                    max_value=ot_disponible, 
-                    step=0.5, 
-                    key=key_banco,
-                    on_change=actualizar_pago
+                    "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    key=key_banco, on_change=actualizar_pago
                 )
             with col_sel2:
                 st.number_input(
-                    "💰 Heures OT à payer", 
-                    min_value=0.0, 
-                    max_value=ot_disponible, 
-                    step=0.5, 
-                    key=key_pago,
-                    on_change=actualizar_banco
+                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    key=key_pago, on_change=actualizar_banco
                 )
         else:
             st.markdown(
@@ -167,37 +168,26 @@ for dia in dias:
                 unsafe_allow_html=True
             )
 
-        # Botones de Acción Diarios
+        # Botones inferiores del día (Agregar línea, Nuit, Reset)
         st.write("")
-        c_add, c_del, c_nuit, c_reset = st.columns([2.5, 2.5, 3, 2])
+        c_add, c_nuit, c_reset = st.columns([3, 3, 2])
         
         with c_add:
-            if st.button("➕ Ajouter", key=f"add_btn_{dia}", use_container_width=True):
+            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
+                # Tomamos el valor 'Out' de la última línea actual para usarlo como 'In' en la nueva línea
+                ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"]
+                nuevo_out = min(24.0, ultimo_out + 4.0) # Sugiere un bloque de 4 horas por defecto
+                
                 st.session_state[f"lineas_{dia}"].append({
-                    "in": 8.0, "out": 17.0, "abs": "-", 
-                    "serv": "Service (WO)", "ord": "", 
-                    "loc": "Candiac (Z8)", "comm": ""
+                    "in": ultimo_out, 
+                    "out": nuevo_out, 
+                    "abs": "-", 
+                    "serv": "Service (WO)", 
+                    "ord": "", 
+                    "loc": "Candiac (Z8)", 
+                    "comm": ""
                 })
                 st.rerun()
 
-        with c_del:
-            if st.button("🗑️ Supprimer", key=f"del_btn_{dia}", use_container_width=True):
-                if len(st.session_state[f"lineas_{dia}"]) > 1:
-                    st.session_state[f"lineas_{dia}"].pop()
-                    st.rerun()
-                else:
-                    st.warning("Debe haber al menos una línea.")
-
         with c_nuit:
-            st.button("🌙 Nuit", key=f"nuit_{dia}", use_container_width=True)
-            
-        with c_reset:
-            if st.button("Reset", key=f"reset_btn_{dia}", use_container_width=True):
-                st.session_state[f"lineas_{dia}"] = [{
-                    "in": 8.0, "out": 17.0, "abs": "-", 
-                    "serv": "Service (WO)", "ord": "", 
-                    "loc": "Candiac (Z8)", "comm": ""
-                }]
-                st.session_state[f"ot_bank_val_{dia}"] = 0.0
-                st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
-                st.rerun()
+            st.button("🌙 Nuit à l'extérieur", key=f"
