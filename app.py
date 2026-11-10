@@ -95,6 +95,7 @@ for dia in dias:
         }]
         st.session_state[f"ot_bank_val_{dia}"] = 0.0
         st.session_state[f"ot_pay_val_{dia}"] = 0.0
+        st.session_state[f"early_ot_confirmed_{dia}"] = False
         st.session_state[f"reset_requested_{dia}"] = False
 
     if f"lineas_{dia}" not in st.session_state:
@@ -106,6 +107,8 @@ for dia in dias:
         st.session_state[f"ot_bank_val_{dia}"] = 0.0
     if f"ot_pay_val_{dia}" not in st.session_state:
         st.session_state[f"ot_pay_val_{dia}"] = 0.0
+    if f"early_ot_confirmed_{dia}" not in st.session_state:
+        st.session_state[f"early_ot_confirmed_{dia}"] = False
 
 # --- RENDERIZADO DE ACORDEONES POR DÍA ---
 for dia in dias:
@@ -113,7 +116,19 @@ for dia in dias:
     
     lineas_actuales = st.session_state[f"lineas_{dia}"]
     
-    # Calcular horas totales ingresadas y detectar OT dinámicamente
+    # Comprobar si la primera línea inicia antes de las 8:00 (ej. a las 6:00)
+    prime_in = st.session_state.get(f"in_{dia}_0", lineas_actuales[0]["in"])
+    is_early_shift = False
+    early_hours = 0.0
+    try:
+        h_val = float(prime_in) if prime_in != "" else 8.0
+        if h_val < 8.0:
+            is_early_shift = True
+            early_hours = 8.0 - h_val
+    except ValueError:
+        pass
+
+    # Calcular horas totales del día
     total_horas_dia = 0.0
     for idx, linea in enumerate(lineas_actuales):
         in_val = st.session_state.get(f"in_{dia}_{idx}", linea["in"])
@@ -126,7 +141,6 @@ for dia in dias:
         except ValueError:
             pass
 
-    # Lógica de horas regulares (ej. 7.5h) vs Overtime
     rt_disponible = min(total_horas_dia, 7.5)
     ot_disponible = max(0.0, total_horas_dia - 7.5)
 
@@ -166,35 +180,47 @@ for dia in dias:
                     else:
                         st.warning("Min 1")
 
-        # Mostrar sección de Overtime SOLO si se superan las horas normales (> 7.5h)
+        # Pregunta interactiva si entra temprano (ej. a las 6:00) y aún no se ha confirmado
+        if is_early_shift and not st.session_state.get(f"early_ot_confirmed_{dia}", False):
+            st.warning(f"⚠️ Entrée matinale détectée à {prime_in}h (avant 8h00). Ces {early_hours:.1f}h sont-elles du temps régulier ou de l'Overtime ?")
+            c_q1, c_q2 = st.columns(2)
+            with c_q1:
+                if st.button("🟢 Temps régulier", key=f"reg_{dia}", use_container_width=True):
+                    st.session_state[f"early_ot_confirmed_{dia}"] = True
+                    st.rerun()
+            with c_q2:
+                if st.button("🟠 C'est de l'Overtime (OT)", key=f"ot_early_{dia}", use_container_width=True):
+                    st.session_state[f"ot_bank_val_{dia}"] = early_hours
+                    st.session_state[f"early_ot_confirmed_{dia}"] = True
+                    st.rerun()
+
+        # Sección de Overtime general si se superan las horas normales
         if ot_disponible > 0:
             st.markdown(
                 f"**À confirmer →** <span class='ot-badge'>OT {ot_disponible:.2f}h</span> + <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
                 unsafe_allow_html=True
             )
 
-            aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible:.2f}h au-delà de 7.5h)"
+            aviso_ot = f"⚠️ Cap 8h atteint : {rt_disponible:.2f}h RT + {ot_disponible:.2f}h OT"
             st.markdown(f"""
-<div style="background-color: #1F2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: #F3F4F6; margin-top: 8px; margin-bottom: 8px;">
-    <strong>{aviso_ot}</strong><br>
-    <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible:.2f}h max) :</small>
+<div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 12px; border-radius: 8px; color: #92400E; margin-top: 8px; margin-bottom: 8px;">
+    <strong>⏰ {aviso_ot}</strong><br>
+    Mettre le OT en banque ?<br>
+    <small>👉 Réponds à cette question pour continuer.</small>
 </div>
 """, unsafe_allow_html=True)
             
-            key_banco = f"ot_bank_val_{dia}"
-            key_pago = f"ot_pay_val_{dia}"
-            
-            col_sel1, col_sel2 = st.columns(2)
-            with col_sel1:
-                st.number_input(
-                    "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
-                    key=key_banco, on_change=make_update_pago(dia, ot_disponible)
-                )
-            with col_sel2:
-                st.number_input(
-                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
-                    key=key_pago, on_change=make_update_banco(dia, ot_disponible)
-                )
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button("💰 OT payé", key=f"ot_pay_btn_{dia}", use_container_width=True):
+                    st.session_state[f"ot_bank_val_{dia}"] = 0.0
+                    st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
+                    st.rerun()
+            with col_b2:
+                if st.button("🏛️ Mettre en banque (OBTI)", key=f"ot_bank_btn_{dia}", use_container_width=True):
+                    st.session_state[f"ot_bank_val_{dia}"] = ot_disponible
+                    st.session_state[f"ot_pay_val_{dia}"] = 0.0
+                    st.rerun()
         else:
             st.markdown(
                 f"**À confirmer →** <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
