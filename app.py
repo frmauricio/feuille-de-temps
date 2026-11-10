@@ -93,9 +93,8 @@ for dia in dias:
             "serv": "Service (WO)", "ord": "", 
             "loc": "Candiac (Z8)", "comm": ""
         }]
-        ot_def = 3.00 if "Lundi" in dia else 0.00
         st.session_state[f"ot_bank_val_{dia}"] = 0.0
-        st.session_state[f"ot_pay_val_{dia}"] = ot_def
+        st.session_state[f"ot_pay_val_{dia}"] = 0.0
         st.session_state[f"reset_requested_{dia}"] = False
 
     if f"lineas_{dia}" not in st.session_state:
@@ -103,25 +102,38 @@ for dia in dias:
             {"in": "", "out": "", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
     
-    ot_val_default = 3.00 if "Lundi" in dia else 0.00
     if f"ot_bank_val_{dia}" not in st.session_state:
         st.session_state[f"ot_bank_val_{dia}"] = 0.0
     if f"ot_pay_val_{dia}" not in st.session_state:
-        st.session_state[f"ot_pay_val_{dia}"] = ot_val_default
+        st.session_state[f"ot_pay_val_{dia}"] = 0.0
 
 # --- RENDERIZADO DE ACORDEONES POR DÍA ---
 for dia in dias:
     esta_abierto = True if "Lundi" in dia else False
     
-    ot_disponible = 3.00 if "Lundi" in dia else 0.00
-    rt_disponible = 7.50 if "Lundi" in dia else 0.00
+    lineas_actuales = st.session_state[f"lineas_{dia}"]
+    
+    # Calcular horas totales ingresadas y detectar OT dinámicamente
+    total_horas_dia = 0.0
+    for idx, linea in enumerate(lineas_actuales):
+        in_val = st.session_state.get(f"in_{dia}_{idx}", linea["in"])
+        out_val = st.session_state.get(f"out_{dia}_{idx}", linea["out"])
+        try:
+            h_in = float(in_val) if in_val != "" else 0.0
+            h_out = float(out_val) if out_val != "" else 0.0
+            if h_out > h_in:
+                total_horas_dia += (h_out - h_in)
+        except ValueError:
+            pass
 
-    num_lineas = len(st.session_state[f"lineas_{dia}"])
-    label_acordeon = f"{dia}  •  {rt_disponible + ot_disponible:.2f}h RT ({num_lineas} lignes)"
+    # Lógica de horas regulares (ej. 7.5h) vs Overtime
+    rt_disponible = min(total_horas_dia, 7.5)
+    ot_disponible = max(0.0, total_horas_dia - 7.5)
+
+    num_lineas = len(lineas_actuales)
+    label_acordeon = f"{dia}  •  {total_horas_dia:.2f}h Total ({num_lineas} lignes)"
 
     with st.expander(label_acordeon, expanded=esta_abierto):
-        
-        lineas_actuales = st.session_state[f"lineas_{dia}"]
         
         for idx, linea in enumerate(lineas_actuales):
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
@@ -144,7 +156,6 @@ for dia in dias:
                 st.markdown("<br>", unsafe_allow_html=True)
                 btn_del_key = f"del_line_{dia}_{idx}"
                 if st.button("🗑️", key=btn_del_key, help="Supprimer cette ligne"):
-                    # Sincronizar antes de borrar para mantener índices limpios
                     for i in range(len(st.session_state[f"lineas_{dia}"])):
                         st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
                         st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
@@ -155,31 +166,34 @@ for dia in dias:
                     else:
                         st.warning("Min 1")
 
-        # Resumen y Gestión Dinámica de Overtime
+        # Mostrar sección de Overtime SOLO si se superan las horas normales (> 7.5h)
         if ot_disponible > 0:
             st.markdown(
                 f"**À confirmer →** <span class='ot-badge'>OT {ot_disponible:.2f}h</span> + <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
                 unsafe_allow_html=True
             )
 
-            aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible}h hors 08–17h)"
+            aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible:.2f}h au-delà de 7.5h)"
             st.markdown(f"""
 <div style="background-color: #1F2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: #F3F4F6; margin-top: 8px; margin-bottom: 8px;">
     <strong>{aviso_ot}</strong><br>
-    <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible}h max) :</small>
+    <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible:.2f}h max) :</small>
 </div>
 """, unsafe_allow_html=True)
+            
+            key_banco = f"ot_bank_val_{dia}"
+            key_pago = f"ot_pay_val_{dia}"
             
             col_sel1, col_sel2 = st.columns(2)
             with col_sel1:
                 st.number_input(
                     "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
-                    key=f"ot_bank_val_{dia}", on_change=make_update_pago(dia, ot_disponible)
+                    key=key_banco, on_change=make_update_pago(dia, ot_disponible)
                 )
             with col_sel2:
                 st.number_input(
                     "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
-                    key=f"ot_pay_val_{dia}", on_change=make_update_banco(dia, ot_disponible)
+                    key=key_pago, on_change=make_update_banco(dia, ot_disponible)
                 )
         else:
             st.markdown(
@@ -193,12 +207,10 @@ for dia in dias:
         
         with c_add:
             if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
-                # Sincronizar todos los inputs activos de la pantalla a la lista antes de leer el último 'out'
                 for i in range(len(st.session_state[f"lineas_{dia}"])):
                     st.session_state[f"lineas_{dia}"][i]["in"] = st.session_state.get(f"in_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["in"])
                     st.session_state[f"lineas_{dia}"][i]["out"] = st.session_state.get(f"out_{dia}_{i}", st.session_state[f"lineas_{dia}"][i]["out"])
                 
-                # Ahora sí leemos el valor real que escribió el usuario en el último 'out' (o por defecto "16")
                 ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"] or "16"
                 
                 st.session_state[f"lineas_{dia}"].append({
