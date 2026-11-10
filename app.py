@@ -38,7 +38,7 @@ div[data-testid="stExpander"] {
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Funciones de actualización para el Overtime
+# 2. Funciones de actualización para la distribución del Overtime
 def make_update_pago(d, total):
     def callback():
         st.session_state[f"ot_pay_val_{d}"] = max(0.0, total - st.session_state[f"ot_bank_val_{d}"])
@@ -140,7 +140,7 @@ for dia in dias:
         except ValueError:
             pass
 
-    # Límite regular ajustado a 8.0 horas exactas (sin pausas)
+    # Límite regular de 8.0 horas exactas (sin pausas de almuerzo)
     rt_disponible = min(total_horas_dia, 8.0)
     ot_disponible = max(0.0, total_horas_dia - 8.0)
 
@@ -194,7 +194,7 @@ for dia in dias:
                     st.session_state[f"early_ot_confirmed_{dia}"] = True
                     st.rerun()
 
-        # Sección de Overtime general si se superan las 8 horas normales
+        # Sección de Overtime general con selectores numéricos para dividir horas
         if ot_disponible > 0:
             st.markdown(
                 f"**À confirmer →** <span class='ot-badge'>OT {ot_disponible:.2f}h</span> + <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
@@ -203,24 +203,31 @@ for dia in dias:
 
             aviso_ot = f"⚠️ Cap 8h atteint : {rt_disponible:.2f}h RT + {ot_disponible:.2f}h OT"
             st.markdown(f"""
-<div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 12px; border-radius: 8px; color: #92400E; margin-top: 8px; margin-bottom: 8px;">
-    <strong>⏰ {aviso_ot}</strong><br>
-    Mettre le OT en banque ?<br>
-    <small>👉 Réponds à cette question pour continuer.</small>
+<div style="background-color: #1F2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: #F3F4F6; margin-top: 8px; margin-bottom: 8px;">
+    <strong>{aviso_ot}</strong><br>
+    <small>👉 Répartition des heures d'Overtime disponibles ({ot_disponible:.2f}h max) :</small>
 </div>
 """, unsafe_allow_html=True)
             
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                if st.button("💰 OT payé", key=f"ot_pay_btn_{dia}", use_container_width=True):
-                    st.session_state[f"ot_bank_val_{dia}"] = 0.0
-                    st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
-                    st.rerun()
-            with col_b2:
-                if st.button("🏛️ Mettre en banque (OBTI)", key=f"ot_bank_btn_{dia}", use_container_width=True):
-                    st.session_state[f"ot_bank_val_{dia}"] = ot_disponible
-                    st.session_state[f"ot_pay_val_{dia}"] = 0.0
-                    st.rerun()
+            key_banco = f"ot_bank_val_{dia}"
+            key_pago = f"ot_pay_val_{dia}"
+
+            # Asegurar valores iniciales válidos si es la primera vez que aparece el OT
+            if st.session_state.get(key_banco, 0.0) + st.session_state.get(key_pago, 0.0) != ot_disponible:
+                st.session_state[key_pago] = ot_disponible
+                st.session_state[key_banco] = 0.0
+
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                st.number_input(
+                    "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    key=key_banco, on_change=make_update_pago(dia, ot_disponible)
+                )
+            with col_sel2:
+                st.number_input(
+                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    key=key_pago, on_change=make_update_banco(dia, ot_disponible)
+                )
         else:
             st.markdown(
                 f"**À confirmer →** <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
@@ -252,6 +259,11 @@ for dia in dias:
 
         with c_nuit:
             st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
+            
+        with c_reset:
+            if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
+                st.session_state[f"reset_requested_{dia}"] = True
+                st.rerun()
             
         with c_reset:
             if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
