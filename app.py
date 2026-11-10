@@ -99,8 +99,9 @@ for dia in dias:
         st.session_state[f"reset_requested_{dia}"] = False
 
     if f"lineas_{dia}" not in st.session_state:
+        # Valores iniciales vacíos para que el placeholder en gris actúe de guía
         st.session_state[f"lineas_{dia}"] = [
-            {"in": "8", "out": "16", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
+            {"in": "", "out": "", "abs": "-", "serv": "Service (WO)", "ord": "352886", "loc": "Candiac (Z8)", "comm": ""}
         ]
     
     ot_val_default = 3.00 if "Lundi" in dia else 0.00
@@ -127,10 +128,10 @@ for dia in dias:
             cols = st.columns([1, 1, 1.4, 1.8, 1.8, 1.8, 2, 0.8])
             
             with cols[0]:
-                # Placeholder con 8 en gris
+                # El campo empieza vacío y muestra '8' en gris tenue
                 st.text_input("In", value=linea["in"], placeholder="8", key=f"in_{dia}_{idx}")
             with cols[1]:
-                # Placeholder con 16 en gris
+                # El campo empieza vacío y muestra '16' en gris tenue
                 st.text_input("Out", value=linea["out"], placeholder="16", key=f"out_{dia}_{idx}")
             with cols[2]:
                 st.selectbox("Abs", ["-", "Maladie", "Vacances"], index=0, key=f"abs_{dia}_{idx}")
