@@ -38,7 +38,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Captura del usuario desde la URL
+# 2. Funciones de actualización para el Overtime (fuera de bucles para evitar errores)
+def make_update_pago(d, total):
+    def callback():
+        st.session_state[f"ot_pay_val_{d}"] = max(0.0, total - st.session_state[f"ot_bank_val_{d}"])
+    return callback
+
+def make_update_banco(d, total):
+    def callback():
+        st.session_state[f"ot_bank_val_{d}"] = max(0.0, total - st.session_state[f"ot_pay_val_{d}"])
+    return callback
+
+# 3. Captura del usuario desde la URL
 query_params = st.query_params
 emp_code = query_params.get("emp", "Fredy Diaz")
 
@@ -138,12 +149,6 @@ for dia in dias:
             if key_pago not in st.session_state:
                 st.session_state[key_pago] = ot_disponible
 
-            def actualizar_pago(d=dia, total=ot_disponible):
-                st.session_state[f"ot_pay_val_{d}"] = max(0.0, total - st.session_state[f"ot_bank_val_{d}"])
-
-            def actualizar_banco(d=dia, total=ot_disponible):
-                st.session_state[f"ot_bank_val_{d}"] = max(0.0, total - st.session_state[f"ot_pay_val_{d}"])
-
             aviso_ot = f"⚠️ Shift hors heures standard ({ot_disponible}h hors 08–17h)"
             st.markdown(f"""
                 <div style="background-color: #1F2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: #F3F4F6; margin-top: 8px; margin-bottom: 8px;">
@@ -156,7 +161,49 @@ for dia in dias:
             with col_sel1:
                 st.number_input(
                     "🏛️ OT en banque", min_value=0.0, max_value=ot_disponible, step=0.5, 
-                    key=key_banco, on_change=actualizar_pago
+                    key=key_banco, on_change=make_update_pago(dia, ot_disponible)
                 )
             with col_sel2:
                 st.number_input(
+                    "💰 OT à payer", min_value=0.0, max_value=ot_disponible, step=0.5, 
+                    key=key_pago, on_change=make_update_banco(dia, ot_disponible)
+                )
+        else:
+            st.markdown(
+                f"**À confirmer →** <span class='rt-badge'>RT {rt_disponible:.2f}h</span>", 
+                unsafe_allow_html=True
+            )
+
+        # Botones inferiores del día
+        st.write("")
+        c_add, c_nuit, c_reset = st.columns([3, 3, 2])
+        
+        with c_add:
+            if st.button("➕ Ajouter une ligne", key=f"add_btn_{dia}", use_container_width=True):
+                ultimo_out = st.session_state[f"lineas_{dia}"][-1]["out"]
+                nuevo_out = min(24.0, ultimo_out + 4.0)
+                
+                st.session_state[f"lineas_{dia}"].append({
+                    "in": ultimo_out, 
+                    "out": nuevo_out, 
+                    "abs": "-", 
+                    "serv": "Service (WO)", 
+                    "ord": "", 
+                    "loc": "Candiac (Z8)", 
+                    "comm": ""
+                })
+                st.rerun()
+
+        with c_nuit:
+            st.button("🌙 Nuit à l'extérieur", key=f"nuit_{dia}", use_container_width=True)
+            
+        with c_reset:
+            if st.button("Réinitialiser", key=f"reset_btn_{dia}", use_container_width=True):
+                st.session_state[f"lineas_{dia}"] = [{
+                    "in": 7.0, "out": 15.0, "abs": "-", 
+                    "serv": "Service (WO)", "ord": "", 
+                    "loc": "Candiac (Z8)", "comm": ""
+                }]
+                st.session_state[f"ot_bank_val_{dia}"] = 0.0
+                st.session_state[f"ot_pay_val_{dia}"] = ot_disponible
+                st.rerun()
